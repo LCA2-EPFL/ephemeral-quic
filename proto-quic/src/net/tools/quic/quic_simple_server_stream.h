@@ -77,6 +77,9 @@ class QuicSimpleServerStream : public QuicSpdyServerStreamBase {
  private:
   friend class test::QuicSimpleServerStreamPeer;
 
+  //JS: Largest stream id we have seen so far
+  static unsigned int LargestStreamId;
+
   // The parsed headers received from the client.
   SpdyHeaderBlock request_headers_;
   int64_t content_length_;

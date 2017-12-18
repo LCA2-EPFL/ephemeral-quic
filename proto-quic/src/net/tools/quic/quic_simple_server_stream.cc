@@ -7,6 +7,11 @@
 #include <list>
 #include <utility>
 
+//JS
+#include <iostream>
+#include <chrono>
+#include <fstream>
+
 #include "net/quic/core/quic_spdy_stream.h"
 #include "net/quic/core/spdy_utils.h"
 #include "net/quic/platform/api/quic_bug_tracker.h"
@@ -19,6 +24,12 @@
 #include "net/tools/quic/quic_simple_server_session.h"
 
 using std::string;
+
+//JS
+using namespace std::chrono;
+
+//JS: Initialize LargestStreamId to 0 (as expected)
+unsigned int net::QuicSimpleServerStream::LargestStreamId = 0;
 
 namespace net {
 
@@ -60,9 +71,47 @@ void QuicSimpleServerStream::OnDataAvailable() {
       // No more data to read.
       break;
     }
+
     QUIC_DVLOG(1) << "Stream " << id() << " processed " << iov.iov_len
                   << " bytes.";
     body_.append(static_cast<char*>(iov.iov_base), iov.iov_len);
+
+    //JS
+    if (id() < LargestStreamId){
+      //JS:It means we got an old message, Log it to keep track of how many times this happens
+      std::cout << "Received old stream!! " << std::to_string(id()) + ", " + std::to_string(LargestStreamId) << std::endl;
+      std::ofstream logging_old_packets;
+      logging_old_packets.open("/home/lca2/Desktop/Old_Messages.txt", std::ios_base::app);
+      logging_old_packets << id() << std::endl;
+      logging_old_packets.close();
+    }
+
+    else {
+      //JS: update the value of LargestStreamId, because we encountered a stream id that
+      //JS: is larger than the largest one seen so far
+      LargestStreamId = id();
+    }
+
+    //JS: Get the body of the request of the client, it should be of the following format: "packet_number:timestamp"
+    string client_request = std::string(static_cast<char*>(iov.iov_base));
+
+    //JS: split the client_request string into packet_number and timestamp
+    int pos = client_request.find(":");
+    long packet_number = std::stol(client_request.substr(0, pos));
+    //JS: Use long for high precision
+    //long latest_response_timestamp = std::stol(static_cast<char*>(iov.iov_base));
+    long latest_response_timestamp = std::stol(client_request.substr(pos+1));
+
+    //JS: Get one way delay from client to server (in microseconds)
+    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    long delay = current_timestamp - latest_response_timestamp;
+    std::cout << "ONE WAY DELAY " + std::to_string(packet_number) + ": "<< delay << std::endl;
+
+    //JS: Write delays to output file, for future analysis
+    std::ofstream logging_delay_client;
+    logging_delay_client.open("/home/lca2/Desktop/delay_client_server.txt", std::ios_base::app);
+    logging_delay_client << std::to_string(packet_number) + ": " + std::to_string(delay)<< std::endl;
+    logging_delay_client.close();
 
     if (content_length_ >= 0 &&
         body_.size() > static_cast<uint64_t>(content_length_)) {
@@ -128,11 +177,20 @@ void QuicSimpleServerStream::SendResponse() {
   }
 
   // Find response in cache. If not found, send error response.
-  const QuicHttpResponseCache::Response* response = nullptr;
+
+  //JS
+  QuicHttpResponseCache::Response* response = nullptr;
   auto authority = request_headers_.find(":authority");
   auto path = request_headers_.find(":path");
   if (authority != request_headers_.end() && path != request_headers_.end()) {
     response = response_cache_->GetResponse(authority->second, path->second);
+
+    //JS: Modify the response, fetched from the cache, on the fly
+    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+
+    response->set_body(QuicStringPiece(std::to_string(current_timestamp)));
+    std::cout << "RESPONSE: " << current_timestamp << std::endl;
+
   }
   if (response == nullptr) {
     QUIC_DVLOG(1) << "Response not found in cache.";
@@ -236,6 +294,11 @@ void QuicSimpleServerStream::SendHeadersAndBodyAndTrailers(
   QUIC_DLOG(INFO) << "Stream " << id() << " writing headers (fin = " << send_fin
                   << ") : " << response_headers.DebugString();
   WriteHeaders(std::move(response_headers), send_fin, nullptr);
+
+  //JS
+  std::cout << "STREAM ID:" << id() << std::endl;
+  //spdy_session()->CloseStream_ServerSide(id() - 2);
+
   if (send_fin) {
     // Nothing else to send.
     return;

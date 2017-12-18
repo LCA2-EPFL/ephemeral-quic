@@ -157,7 +157,9 @@ void QuicHttpResponseCache::ResourceFile::HandleXOriginalUrl() {
   SetHostPathFromBase(url);
 }
 
-const QuicHttpResponseCache::Response* QuicHttpResponseCache::GetResponse(
+//JS
+QuicHttpResponseCache::Response* QuicHttpResponseCache::GetResponse(
+//const QuicHttpResponseCache::Response* QuicHttpResponseCache::GetResponse(
     QuicStringPiece host,
     QuicStringPiece path) const {
   QuicWriterMutexLock lock(&response_mutex_);

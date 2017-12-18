@@ -133,8 +133,11 @@ class QuicHttpResponseCache {
 
   // Retrieve a response from this cache for a given host and path..
   // If no appropriate response exists, nullptr is returned.
-  const Response* GetResponse(QuicStringPiece host, QuicStringPiece path) const;
 
+  //JS
+  //const Response* GetResponse(QuicStringPiece host, QuicStringPiece path) const;
+  Response* GetResponse(QuicStringPiece host, QuicStringPiece path) const;
+  
   // Adds a simple response to the cache.  The response headers will
   // only contain the "content-length" header with the length of |body|.
   void AddSimpleResponse(QuicStringPiece host,

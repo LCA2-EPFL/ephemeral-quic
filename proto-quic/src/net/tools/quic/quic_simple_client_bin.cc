@@ -40,6 +40,9 @@
 
 #include <iostream>
 
+//JS
+#include <chrono>
+
 #include "base/at_exit.h"
 #include "base/command_line.h"
 #include "base/logging.h"
@@ -79,6 +82,9 @@ using std::cout;
 using std::cerr;
 using std::endl;
 using std::string;
+
+//JS
+using namespace std::chrono;
 
 // The IP or hostname the quic client will connect to.
 string FLAGS_host = "";
@@ -323,11 +329,20 @@ int main(int argc, char* argv[]) {
   // Make sure to store the response, for later output.
   client.set_store_response(true);
 
-  // Send the request.
-  client.SendRequestAndWaitForResponse(header_block, body, /*fin=*/true);
+  //JS: Send multiple requests
+  for(int a = 0; a < 100000; a++) {
+    //JS: Include the current timestamp in the body of the client request (to log one-way delay)
+    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    //JS: Set the body of the client request to "packet_number:timestamp"
+    body = std::to_string(a+1) + ":" + std::to_string(current_timestamp) + ":";
+
+    //JS: Make the length of the body (QUIC payload) around 800 bits (100 bytes)
+    for (int i = body.length(); i < 100 ; i++){body += "*";}
+    // Send the request.
+    client.SendRequestAndWaitForResponse(header_block, body, true);
 
   // Print request and response details.
-  if (!FLAGS_quiet) {
+  /*if (!FLAGS_quiet) {
     cout << "Request:" << endl;
     cout << "headers:" << header_block.DebugString();
     if (!FLAGS_body_hex.empty()) {
@@ -349,6 +364,7 @@ int main(int argc, char* argv[]) {
       cout << "body: " << response_body << endl;
     }
     cout << "trailers: " << client.latest_response_trailers() << endl;
+  }*/
   }
 
   size_t response_code = client.latest_response_code();

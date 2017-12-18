@@ -195,6 +195,10 @@ class QuicSpdyClientBase : public QuicClientBase,
   SpdyHeaderBlock latest_response_header_block_;
   // Body of most recent response.
   std::string latest_response_body_;
+
+  //JS: highest timestamp recorded so far
+  long highest_timestamp = 0;
+
   // HTTP/2 trailers from most recent response.
   std::string latest_response_trailers_;
 

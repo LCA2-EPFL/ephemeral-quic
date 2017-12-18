@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+//JS
+#include <iostream>
+#include <chrono>
+#include <fstream>
+
 #include "net/tools/quic/quic_spdy_client_base.h"
 
 #include "net/quic/core/crypto/quic_random.h"
@@ -14,6 +19,9 @@
 
 using base::StringToInt;
 using std::string;
+
+//JS
+using namespace std::chrono;
 
 namespace net {
 
@@ -64,7 +72,9 @@ void QuicSpdyClientBase::InitializeSession() {
 }
 
 void QuicSpdyClientBase::OnClose(QuicSpdyStream* stream) {
+
   DCHECK(stream != nullptr);
+
   QuicSpdyClientStream* client_stream =
       static_cast<QuicSpdyClientStream*>(stream);
 
@@ -86,6 +96,43 @@ void QuicSpdyClientBase::OnClose(QuicSpdyStream* stream) {
         client_stream->preliminary_headers().DebugString();
     latest_response_header_block_ = response_headers.Clone();
     latest_response_body_ = client_stream->data();
+
+    //JS
+    if (latest_response_body_ != ""){
+      //JS: Use long for higher precision
+      long latest_response_timestamp = std::stol(latest_response_body_);
+
+      //JS: Get one way delay from server to client (in microseconds)
+      long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      long delay = current_timestamp - latest_response_timestamp;
+      std::cout << "ONE WAY DELAY " + std::to_string(stream->id()) + ": "<< delay << std::endl;
+
+      //JS: Extract the packet number from the stream id
+      //Since packet 1 corresponds to stream id 5, packet 2 to stream id 7, 3 to 9 ...
+      //then, packet_number = (stream_id - 5)/2 + 1
+      long packet_number = (stream->id() - 5)/2 + 1;
+
+      //JS: Write delays to output file, for future analysis
+      std::ofstream logging_delay_server;
+      logging_delay_server.open("/home/lca2/Desktop/delay_server_client.txt", std::ios_base::app);
+      logging_delay_server << std::to_string(packet_number) + ": " + std::to_string(delay)<< std::endl;
+      logging_delay_server.close();
+
+    if (latest_response_timestamp > highest_timestamp){
+      highest_timestamp = latest_response_timestamp;
+    }
+    else if (latest_response_timestamp < highest_timestamp){
+      latest_response_body_ = std::to_string(highest_timestamp);
+      std::cout << "Choose previous response!" << std::endl;
+      std::cout << std::to_string(stream->id()) + " OLD: " << latest_response_timestamp << std::endl;
+      std::cout << std::to_string(stream->id()) + " NEW: " << latest_response_body_ << std::endl;
+    }
+
+    //JS: print response, along with stream id to see which stream closed now
+    latest_response_body_ = std::to_string(stream->id()) + " " + latest_response_body_;
+    std::cout << "Final Response: " << latest_response_body_ << std::endl;
+  }
+
     latest_response_trailers_ =
         client_stream->received_trailers().DebugString();
   }
@@ -117,9 +164,30 @@ void QuicSpdyClientBase::SendRequest(const SpdyHeaderBlock& headers,
     QUIC_BUG << "stream creation failed!";
     return;
   }
+
+  //JS: Client uses new stream for every request (fin is set to true when sending any request)
+  std::cout << "STREAM ID:" << stream->id() << std::endl;
   stream->SendRequest(headers.Clone(), body, fin);
+
   // Record this in case we need to resend.
   MaybeAddDataToResend(headers, body, fin);
+
+  //JS: wait in the while for 100 ms
+  long start = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  while(true){
+    WaitForEvents();
+    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    if (current_timestamp - start >= 100000.0){
+      break;
+    }
+  }
+
+  //JS: Stop retransmissions after 100 ms
+  client_session()->StopRetransmissions(stream->id());
+
+  //client_session()->CloseStreamInner(stream->id(), true);
+  //stream->OnFinRead();
+  //client_session()->OnStreamDoneWaitingForAcks(stream->id());
 }
 
 void QuicSpdyClientBase::SendRequestAndWaitForResponse(
@@ -127,8 +195,6 @@ void QuicSpdyClientBase::SendRequestAndWaitForResponse(
     QuicStringPiece body,
     bool fin) {
   SendRequest(headers, body, fin);
-  while (WaitForEvents()) {
-  }
 }
 
 void QuicSpdyClientBase::SendRequestsAndWaitForResponse(
