@@ -280,6 +280,11 @@ class QUIC_EXPORT_PRIVATE QuicSession : public QuicConnectionVisitorInterface,
     return save_data_before_consumption_;
   }
 
+  //JS: Stop Stream Retransmission
+  virtual void StopRetransmissions(QuicStreamId stream_id);
+  //JS
+  virtual void CloseStream_ServerSide(QuicStreamId stream_id);
+
  protected:
   using StaticStreamMap = QuicSmallMap<QuicStreamId, QuicStream*, 2>;
 

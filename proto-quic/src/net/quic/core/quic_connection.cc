@@ -1416,6 +1416,13 @@ void QuicConnection::WritePendingRetransmissions() {
   }
 }
 
+//JS: Stop Stream Retransmission
+void QuicConnection::StopRetransmissions(QuicStreamId stream_id)
+{
+  std::cout << "Cancel retransmissions for stream " << stream_id << std::endl;
+  sent_packet_manager_.CancelRetransmissionsForStream(stream_id);
+}
+
 void QuicConnection::RetransmitUnackedPackets(
     TransmissionType retransmission_type) {
   sent_packet_manager_.RetransmitUnackedPackets(retransmission_type);

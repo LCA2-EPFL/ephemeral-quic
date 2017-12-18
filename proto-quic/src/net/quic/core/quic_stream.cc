@@ -4,6 +4,9 @@
 
 #include "net/quic/core/quic_stream.h"
 
+//JS
+#include <iostream>
+
 #include "net/quic/core/quic_flow_controller.h"
 #include "net/quic/core/quic_session.h"
 #include "net/quic/platform/api/quic_bug_tracker.h"
@@ -508,6 +511,8 @@ const QuicSocketAddress& QuicStream::PeerAddressOfLatestPacket() const {
 }
 
 void QuicStream::OnClose() {
+  //JS
+  std::cout << "CLOSED STREAM " << id() << std::endl;
   CloseReadSide();
   CloseWriteSide();
 

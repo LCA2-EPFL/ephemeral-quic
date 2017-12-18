@@ -67,7 +67,8 @@ const uint32_t kMinInitialRoundTripTimeUs = 10 * kNumMicrosPerMilli;
 const uint32_t kMaxInitialRoundTripTimeUs = 15 * kNumMicrosPerSecond;
 
 // Maximum number of open streams per connection.
-const size_t kDefaultMaxStreamsPerConnection = 100;
+//JS: Increase the maximum allowed number of concurrent open outgoing streams (instead of 100)
+const size_t kDefaultMaxStreamsPerConnection = 100000;
 
 // Number of bytes reserved for public flags in the packet header.
 const size_t kPublicFlagsSize = 1;

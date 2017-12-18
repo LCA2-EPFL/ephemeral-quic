@@ -7,6 +7,9 @@
 #include <cstdint>
 #include <utility>
 
+//JS
+#include <iostream>
+
 #include "net/quic/core/quic_connection.h"
 #include "net/quic/core/quic_flow_controller.h"
 #include "net/quic/platform/api/quic_bug_tracker.h"
@@ -30,7 +33,8 @@ QuicSession::QuicSession(QuicConnection* connection,
       visitor_(owner),
       config_(config),
       max_open_outgoing_streams_(kDefaultMaxStreamsPerConnection),
-      max_open_incoming_streams_(config_.GetMaxIncomingDynamicStreamsToSend()),
+      //JS: set the maximum allowed number of incoming streams (in particular at server) to kDefaultMaxStreamsPerConnection (100000)
+      max_open_incoming_streams_(kDefaultMaxStreamsPerConnection),
       next_outgoing_stream_id_(perspective() == Perspective::IS_SERVER ? 2 : 3),
       largest_peer_created_stream_id_(
           perspective() == Perspective::IS_SERVER ? 1 : 0),
@@ -97,6 +101,10 @@ void QuicSession::OnStreamFrame(const QuicStreamFrame& frame) {
   }
   stream->OnStreamFrame(frame);
 }
+
+//JS: Stop Stream Retransmission after 100 ms
+void QuicSession::StopRetransmissions(QuicStreamId stream_id)
+{connection()->StopRetransmissions(stream_id);}
 
 void QuicSession::OnRstStream(const QuicRstStreamFrame& frame) {
   if (QuicContainsKey(static_stream_map_, frame.stream_id)) {
@@ -417,6 +425,11 @@ void QuicSession::CloseStreamInner(QuicStreamId stream_id, bool locally_reset) {
   stream->OnClose();
   // Decrease the number of streams being emulated when a new one is opened.
   connection_->SetNumOpenStreams(dynamic_stream_map_.size());
+}
+
+//JS
+void QuicSession::CloseStream_ServerSide(QuicStreamId stream_id) {
+  CloseStreamInner(stream_id, true);
 }
 
 void QuicSession::OnFinalByteOffsetReceived(
@@ -752,6 +765,10 @@ QuicStream* QuicSession::GetOrCreateDynamicStream(
 
   // Check if the new number of open streams would cause the number of
   // open streams to exceed the limit.
+
+  //JS
+  std::cout << "GetNumOpenIncomingStreams: " << GetNumOpenIncomingStreams() << std::endl;
+
   if (GetNumOpenIncomingStreams() >= max_open_incoming_streams()) {
     // Refuse to open the stream.
     SendRstStream(stream_id, QUIC_REFUSED_STREAM, 0);

@@ -563,6 +563,9 @@ class QUIC_EXPORT_PRIVATE QuicConnection
   // changes.
   void RetransmitUnackedPackets(TransmissionType retransmission_type);
 
+  //JS: Stop Stream Retransmission
+  void StopRetransmissions(QuicStreamId stream_id);
+
   // Calls |sent_packet_manager_|'s NeuterUnencryptedPackets. Used when the
   // connection becomes forward secure and hasn't received acks for all packets.
   void NeuterUnencryptedPackets();

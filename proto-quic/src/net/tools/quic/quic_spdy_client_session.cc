@@ -4,6 +4,9 @@
 
 #include "net/tools/quic/quic_spdy_client_session.h"
 
+//JS
+#include <iostream>
+
 #include "net/log/net_log_with_source.h"
 #include "net/quic/chromium/crypto/proof_verifier_chromium.h"
 #include "net/quic/core/crypto/crypto_protocol.h"
@@ -62,7 +65,12 @@ bool QuicSpdyClientSession::ShouldCreateOutgoingDynamicStream() {
 
 QuicSpdyClientStream* QuicSpdyClientSession::CreateOutgoingDynamicStream(
     SpdyPriority priority) {
+
+  //JS
+  std::cout << "GetNumOpenOutgoingStreams:" << GetNumOpenOutgoingStreams() << std::endl;
+
   if (!ShouldCreateOutgoingDynamicStream()) {
+    //JS: will return nullptr if the number of open outgoing streams > maximum allowed number
     return nullptr;
   }
   std::unique_ptr<QuicSpdyClientStream> stream = CreateClientStream();

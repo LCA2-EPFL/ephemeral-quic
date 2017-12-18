@@ -5,6 +5,7 @@
 #include "net/quic/core/frames/quic_frame.h"
 #include "net/quic/platform/api/quic_logging.h"
 
+#include <iostream>
 using std::string;
 
 namespace net {
@@ -89,6 +90,8 @@ void RemoveFramesForStream(QuicFrames* frames, QuicStreamId stream_id) {
       ++it;
       continue;
     }
+    //JS
+    std::cout << "DELETED FRAME " << it->stream_frame << std::endl;
     delete it->stream_frame;
     it = frames->erase(it);
   }
