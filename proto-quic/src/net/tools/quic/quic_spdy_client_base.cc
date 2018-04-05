@@ -183,8 +183,10 @@ void QuicSpdyClientBase::SendRequest(const SpdyHeaderBlock& headers,
   }
 
   //JS: Stop retransmissions after 100 ms
-  client_session()->StopRetransmissions(stream->id());
-
+  if (!stream->IsClosed()) {
+    client_session()->StopRetransmissions(stream->id());
+    stream->Reset(QUIC_STREAM_CANCELLED);
+  }
   //client_session()->CloseStreamInner(stream->id(), true);
   //stream->OnFinRead();
   //client_session()->OnStreamDoneWaitingForAcks(stream->id());
