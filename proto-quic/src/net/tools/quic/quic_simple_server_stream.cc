@@ -79,7 +79,7 @@ void QuicSimpleServerStream::OnDataAvailable() {
     //JS
     if (id() < LargestStreamId){
       //JS:It means we got an old message, Log it to keep track of how many times this happens
-      std::cout << "Received old stream!! " << std::to_string(id()) + ", " + std::to_string(LargestStreamId) << std::endl;
+      std::cout << "Received old stream!! " << id() << ", " << LargestStreamId << std::endl;
       std::ofstream logging_old_packets;
       logging_old_packets.open("/home/lca2/Desktop/Old_Messages.txt", std::ios_base::app);
       logging_old_packets << id() << std::endl;
@@ -96,29 +96,35 @@ void QuicSimpleServerStream::OnDataAvailable() {
     string client_request = std::string(static_cast<char*>(iov.iov_base));
 
     //JS: split the client_request string into packet_number and timestamp
-    int pos = client_request.find(":");
-    long packet_number = std::stol(client_request.substr(0, pos));
-    //JS: Use long for high precision
-    //long latest_response_timestamp = std::stol(static_cast<char*>(iov.iov_base));
-    long latest_response_timestamp = std::stol(client_request.substr(pos+1));
+    std::string::size_type pos = client_request.find(":");
+    // A complete client request has more than 100 characters, including "packet_number:timestamp:" and padding characters.
+    if ((pos != std::string::npos) && (client_request.find(":", pos+1) != std::string::npos) && (client_request.length() >= 100)) {
+      std::cout << "stoll packet_number: " << client_request.substr(0, pos) << std::endl;
+      long long packet_number = std::stol(client_request.substr(0, pos));
+      //JS: Use long long for high precision
+      std::cout << "stoll largest_response_timestamp: " << client_request.substr(pos+1) << std::endl;
+      long long latest_response_timestamp = std::stol(client_request.substr(pos+1));
 
-    //JS: Get one way delay from client to server (in microseconds)
-    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    long delay = current_timestamp - latest_response_timestamp;
-    std::cout << "ONE WAY DELAY " + std::to_string(packet_number) + ": "<< delay << std::endl;
+      //JS: Get one way delay from client to server (in microseconds)
+      long long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      long long delay = current_timestamp - latest_response_timestamp;
+      std::cout << "ONE WAY DELAY " << packet_number << ": " << delay << std::endl;
 
-    //JS: Write delays to output file, for future analysis
-    std::ofstream logging_delay_client;
-    logging_delay_client.open("/home/lca2/Desktop/delay_client_server.txt", std::ios_base::app);
-    logging_delay_client << std::to_string(packet_number) + ": " + std::to_string(delay)<< std::endl;
-    logging_delay_client.close();
+      //JS: Write delays to output file, for future analysis
+      std::ofstream logging_delay_client;
+      logging_delay_client.open("/home/lca2/Desktop/delay_client_server.txt", std::ios_base::app);
+      logging_delay_client << packet_number << ": " << delay << std::endl;
+      logging_delay_client.close();
 
-    if (content_length_ >= 0 &&
-        body_.size() > static_cast<uint64_t>(content_length_)) {
-      QUIC_DVLOG(1) << "Body size (" << body_.size() << ") > content length ("
-                    << content_length_ << ").";
-      SendErrorResponse();
-      return;
+      if (content_length_ >= 0 &&
+          body_.size() > static_cast<uint64_t>(content_length_)) {
+        QUIC_DVLOG(1) << "Body size (" << body_.size() << ") > content length ("
+                      << content_length_ << ").";
+        SendErrorResponse();
+        return;
+      }
+    } else {
+       std::cout << "Ignored incomplete request: " << client_request << std::endl;
     }
     MarkConsumed(iov.iov_len);
   }
