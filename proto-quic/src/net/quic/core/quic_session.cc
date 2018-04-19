@@ -33,8 +33,7 @@ QuicSession::QuicSession(QuicConnection* connection,
       visitor_(owner),
       config_(config),
       max_open_outgoing_streams_(kDefaultMaxStreamsPerConnection),
-      //JS: set the maximum allowed number of incoming streams (in particular at server) to kDefaultMaxStreamsPerConnection (100000)
-      max_open_incoming_streams_(kDefaultMaxStreamsPerConnection),
+      max_open_incoming_streams_(config_.GetMaxIncomingDynamicStreamsToSend()),
       next_outgoing_stream_id_(perspective() == Perspective::IS_SERVER ? 2 : 3),
       largest_peer_created_stream_id_(
           perspective() == Perspective::IS_SERVER ? 1 : 0),
