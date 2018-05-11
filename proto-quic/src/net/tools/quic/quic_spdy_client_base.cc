@@ -184,6 +184,7 @@ void QuicSpdyClientBase::SendRequest(const SpdyHeaderBlock& headers,
 
   //JS: Stop retransmissions after 100 ms
   if (!stream->IsClosed()) {
+    std::cout << "Cancelling stream " << stream->id() << std::endl;
     client_session()->StopRetransmissions(stream->id());
     stream->Reset(QUIC_STREAM_CANCELLED);
   }

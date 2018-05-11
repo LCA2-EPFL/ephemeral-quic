@@ -4,6 +4,8 @@
 
 #include "net/tools/quic/quic_simple_dispatcher.h"
 
+#include <iostream>
+
 #include "net/tools/quic/quic_simple_server_session.h"
 
 namespace net {
@@ -38,6 +40,7 @@ int QuicSimpleDispatcher::GetRstErrorCount(
 
 void QuicSimpleDispatcher::OnRstStreamReceived(
     const QuicRstStreamFrame& frame) {
+  std::cout << "OnRstStreamReceived at stream " << frame.stream_id << std::endl;
   auto it = rst_error_map_.find(frame.error_code);
   if (it == rst_error_map_.end()) {
     rst_error_map_.insert(std::make_pair(frame.error_code, 1));

@@ -132,12 +132,13 @@ size_t QuicSpdyClientStream::SendRequest(SpdyHeaderBlock headers,
                                          bool fin) {
   QuicConnection::ScopedPacketBundler bundler(
       session_->connection(), QuicConnection::SEND_ACK_IF_QUEUED);
-  bool send_fin_with_headers = fin && body.empty();
   size_t bytes_sent = body.size();
+  /*
+  bool send_fin_with_headers = fin && body.empty();
   header_bytes_written_ =
       WriteHeaders(std::move(headers), send_fin_with_headers, nullptr);
   bytes_sent += header_bytes_written_;
-
+  */
   if (!body.empty()) {
     WriteOrBufferData(body, fin, nullptr);
   }

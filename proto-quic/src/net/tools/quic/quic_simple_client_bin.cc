@@ -330,7 +330,7 @@ int main(int argc, char* argv[]) {
   client.set_store_response(true);
 
   //JS: Send multiple requests
-  for(int a = 0; a < 100000; a++) {
+  for(int a = 0; a < 100; a++) {
     //JS: Include the current timestamp in the body of the client request (to log one-way delay)
     long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     //JS: Set the body of the client request to "packet_number:timestamp"

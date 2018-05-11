@@ -34,7 +34,7 @@ QuicSpdyStream::QuicSpdyStream(QuicStreamId id, QuicSpdySession* spdy_session)
   DCHECK_NE(kCryptoStreamId, id);
   // Don't receive any callbacks from the sequencer until headers
   // are complete.
-  sequencer()->SetBlockedUntilFlush();
+//  sequencer()->SetBlockedUntilFlush();
   spdy_session_->RegisterStreamPriority(id, priority_);
 }
 
@@ -266,7 +266,8 @@ void QuicSpdyStream::OnCanWrite() {
 }
 
 bool QuicSpdyStream::FinishedReadingHeaders() const {
-  return headers_decompressed_ && header_list_.empty();
+  return true;
+ // return headers_decompressed_ && header_list_.empty();
 }
 
 bool QuicSpdyStream::ParseHeaderStatusCode(const SpdyHeaderBlock& header,

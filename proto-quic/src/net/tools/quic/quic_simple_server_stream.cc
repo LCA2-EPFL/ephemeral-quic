@@ -161,7 +161,15 @@ void QuicSimpleServerStream::PushResponse(
 }
 
 void QuicSimpleServerStream::SendResponse() {
+  long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  SpdyHeaderBlock headers;
+  headers[":status"] = "404";
+  SendHeadersAndBody(std::move(headers), std::to_string(current_timestamp));
+
+  return;
+
   if (request_headers_.empty()) {
+    std::cout << "Request headers empty" << std::endl;
     QUIC_DVLOG(1) << "Request headers empty.";
     SendErrorResponse();
     return;
@@ -169,6 +177,7 @@ void QuicSimpleServerStream::SendResponse() {
 
   if (content_length_ > 0 &&
       static_cast<uint64_t>(content_length_) != body_.size()) {
+    std::cout << "Different sizes" << std::endl;
     QUIC_DVLOG(1) << "Content length (" << content_length_ << ") != body size ("
                   << body_.size() << ").";
     SendErrorResponse();
@@ -177,6 +186,7 @@ void QuicSimpleServerStream::SendResponse() {
 
   if (!QuicContainsKey(request_headers_, ":authority") ||
       !QuicContainsKey(request_headers_, ":path")) {
+    std::cout << "Request headers lack keys" << std::endl;
     QUIC_DVLOG(1) << "Request headers do not contain :authority or :path.";
     SendErrorResponse();
     return;
