@@ -111,6 +111,11 @@ bool FLAGS_redirect_is_success = true;
 // Initial MTU of the connection.
 int32_t FLAGS_initial_mtu = 0;
 
+static const int kMessageLength = 100;
+static const char kPaddingCharacter = '*';
+static const int kNumberOfEphemeralMessages = 100;
+static const int kCycleInMicroseconds = 100000;
+
 class FakeProofVerifier : public ProofVerifier {
  public:
   net::QuicAsyncStatus VerifyProof(
@@ -139,6 +144,16 @@ class FakeProofVerifier : public ProofVerifier {
     return net::QUIC_SUCCESS;
   }
 };
+
+static std::string GenerateEphemeralMessage(int round) {
+  //JS: Include the current timestamp in the body of the client request (to log one-way delay)
+  long long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  //JS: Set the body of the client request to "packet_number:timestamp"
+  std::string message = std::to_string(round + 1) + ":" + std::to_string(current_timestamp) + ":";
+  // Pad the message to 100 bytes
+  message.resize(kMessageLength, kPaddingCharacter);
+  return message;
+}
 
 int main(int argc, char* argv[]) {
   base::CommandLine::Init(argc, argv);
@@ -300,71 +315,21 @@ int main(int argc, char* argv[]) {
   }
   cout << "Connected to " << host_port << endl;
 
-  // Construct the string body from flags, if provided.
-  string body = FLAGS_body;
-  if (!FLAGS_body_hex.empty()) {
-    DCHECK(FLAGS_body.empty()) << "Only set one of --body and --body_hex.";
-    body = QuicTextUtils::HexDecode(FLAGS_body_hex);
-  }
-
-  // Construct a GET or POST request for supplied URL.
-  SpdyHeaderBlock header_block;
-  header_block[":method"] = body.empty() ? "GET" : "POST";
-  header_block[":scheme"] = url.scheme();
-  header_block[":authority"] = url.host();
-  header_block[":path"] = url.path();
-
-  // Append any additional headers supplied on the command line.
-  for (QuicStringPiece sp : QuicTextUtils::Split(FLAGS_headers, ';')) {
-    QuicTextUtils::RemoveLeadingAndTrailingWhitespace(&sp);
-    if (sp.empty()) {
-      continue;
-    }
-    std::vector<QuicStringPiece> kv = QuicTextUtils::Split(sp, ':');
-    QuicTextUtils::RemoveLeadingAndTrailingWhitespace(&kv[0]);
-    QuicTextUtils::RemoveLeadingAndTrailingWhitespace(&kv[1]);
-    header_block[kv[0]] = kv[1];
-  }
-
   // Make sure to store the response, for later output.
   client.set_store_response(true);
 
-  //JS: Send multiple requests
-  for(int a = 0; a < 100; a++) {
-    //JS: Include the current timestamp in the body of the client request (to log one-way delay)
-    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    //JS: Set the body of the client request to "packet_number:timestamp"
-    body = std::to_string(a+1) + ":" + std::to_string(current_timestamp) + ":";
-
-    //JS: Make the length of the body (QUIC payload) around 800 bits (100 bytes)
-    for (int i = body.length(); i < 100 ; i++){body += "*";}
-    // Send the request.
-    client.SendRequestAndWaitForResponse(header_block, body, true);
-
-  // Print request and response details.
-  /*if (!FLAGS_quiet) {
-    cout << "Request:" << endl;
-    cout << "headers:" << header_block.DebugString();
-    if (!FLAGS_body_hex.empty()) {
-      // Print the user provided hex, rather than binary body.
-      cout << "body:\n"
-           << QuicTextUtils::HexDump(QuicTextUtils::HexDecode(FLAGS_body_hex))
-           << endl;
-    } else {
-      cout << "body: " << body << endl;
+  for (int i = 0; i < kNumberOfEphemeralMessages; i++) {
+    std::string message = GenerateEphemeralMessage(i);
+    client.SendEphemeralMessage(message);
+    // Wait for 100 ms
+    long start = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    while(true){
+      client.WaitForEvents();
+      long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      if (current_timestamp - start >= kCycleInMicroseconds){
+        break;
+      }
     }
-    cout << endl;
-    cout << "Response:" << endl;
-    cout << "headers: " << client.latest_response_headers() << endl;
-    string response_body = client.latest_response_body();
-    if (!FLAGS_body_hex.empty()) {
-      // Assume response is binary data.
-      cout << "body:\n" << QuicTextUtils::HexDump(response_body) << endl;
-    } else {
-      cout << "body: " << response_body << endl;
-    }
-    cout << "trailers: " << client.latest_response_trailers() << endl;
-  }*/
   }
 
   size_t response_code = client.latest_response_code();
