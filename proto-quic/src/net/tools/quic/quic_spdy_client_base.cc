@@ -54,7 +54,8 @@ QuicSpdyClientBase::QuicSpdyClientBase(
                      std::move(network_helper),
                      std::move(proof_verifier)),
       store_response_(false),
-      latest_response_code_(-1) {}
+      latest_response_code_(-1),
+      latest_ephemeral_stream_(nullptr) {}
 
 QuicSpdyClientBase::~QuicSpdyClientBase() {
   // We own the push promise index. We need to explicitly kill
@@ -145,6 +146,16 @@ std::unique_ptr<QuicSession> QuicSpdyClientBase::CreateQuicClientSession(
                                                &push_promise_index_);
 }
 
+void QuicSpdyClientBase::SendEphemeralMessage(const std::string &message) {
+  if ((latest_ephemeral_stream_ != nullptr) && (!latest_ephemeral_stream_->IsClosed())) {
+    std::cout << "Cancelling stream " << latest_ephemeral_stream_->id() << std::endl;
+    client_session()->StopRetransmissions(latest_ephemeral_stream_->id());
+    latest_ephemeral_stream_->Reset(QUIC_STREAM_CANCELLED);
+  }
+  SpdyHeaderBlock dummy_header;
+  SendRequest(dummy_header, message, /*fin=*/true);
+}
+
 void QuicSpdyClientBase::SendRequest(const SpdyHeaderBlock& headers,
                                      QuicStringPiece body,
                                      bool fin) {
@@ -167,30 +178,11 @@ void QuicSpdyClientBase::SendRequest(const SpdyHeaderBlock& headers,
 
   //JS: Client uses new stream for every request (fin is set to true when sending any request)
   std::cout << "STREAM ID:" << stream->id() << std::endl;
+  latest_ephemeral_stream_ = stream;
   stream->SendRequest(headers.Clone(), body, fin);
 
   // Record this in case we need to resend.
   MaybeAddDataToResend(headers, body, fin);
-
-  //JS: wait in the while for 100 ms
-  long start = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-  while(true){
-    WaitForEvents();
-    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-    if (current_timestamp - start >= 100000.0){
-      break;
-    }
-  }
-
-  //JS: Stop retransmissions after 100 ms
-  if (!stream->IsClosed()) {
-    std::cout << "Cancelling stream " << stream->id() << std::endl;
-    client_session()->StopRetransmissions(stream->id());
-    stream->Reset(QUIC_STREAM_CANCELLED);
-  }
-  //client_session()->CloseStreamInner(stream->id(), true);
-  //stream->OnFinRead();
-  //client_session()->OnStreamDoneWaitingForAcks(stream->id());
 }
 
 void QuicSpdyClientBase::SendRequestAndWaitForResponse(

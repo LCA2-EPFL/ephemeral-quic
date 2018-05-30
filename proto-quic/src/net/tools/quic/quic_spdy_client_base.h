@@ -99,6 +99,10 @@ class QuicSpdyClientBase : public QuicClientBase,
   // each to complete.
   void SendRequestsAndWaitForResponse(const std::vector<std::string>& url_list);
 
+  // Stops retransmistting obsolete ephemeral messages, sends the new ephemeral
+  // message, and does not wait for response before returning.
+  void SendEphemeralMessage(const std::string &message);
+
   // Returns a newly created QuicSpdyClientStream.
   QuicSpdyClientStream* CreateClientStream();
 
@@ -210,6 +214,9 @@ class QuicSpdyClientBase : public QuicClientBase,
   std::vector<std::unique_ptr<QuicDataToResend>> data_to_resend_on_connect_;
 
   std::unique_ptr<ClientQuicDataToResend> push_promise_data_to_resend_;
+
+  // The latest stream that has been created for sending ephemeral messages.
+  QuicSpdyClientStream *latest_ephemeral_stream_;
 
   DISALLOW_COPY_AND_ASSIGN(QuicSpdyClientBase);
 };
