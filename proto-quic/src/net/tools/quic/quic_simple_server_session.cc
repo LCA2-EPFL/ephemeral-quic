@@ -4,6 +4,9 @@
 
 #include "net/tools/quic/quic_simple_server_session.h"
 
+#include <chrono>
+#include <fstream>
+#include <iostream>
 #include <utility>
 
 #include "net/quic/core/proto/cached_network_parameters.pb.h"
@@ -14,6 +17,7 @@
 #include "net/tools/quic/quic_simple_server_stream.h"
 
 using std::string;
+using namespace std::chrono;
 
 namespace net {
 
@@ -56,6 +60,7 @@ void QuicSimpleServerSession::StreamDraining(QuicStreamId id) {
 }
 
 void QuicSimpleServerSession::OnStreamFrame(const QuicStreamFrame& frame) {
+  std::cout << "QuicSimpleServerSession::OnStreamFrame" << std::endl;
   if (!IsIncomingStream(frame.stream_id)) {
     QUIC_LOG(WARNING) << "Client shouldn't send data on server push stream";
     connection()->CloseConnection(
@@ -215,6 +220,32 @@ void QuicSimpleServerSession::HandlePromisedPushRequests() {
     promised_streams_.pop_front();
     promised_stream->PushResponse(std::move(request_headers));
   }
+}
+
+void QuicSimpleServerSession::OnEphemeralMessageReceived(const std::string &message) {
+    //JS: split the message string into packet_number and timestamp
+    std::string::size_type pos = message.find(":");
+    // A complete client request has more than 100 characters, including "packet_number:timestamp:" and padding characters.
+    if ((pos != std::string::npos) && (message.find(":", pos+1) != std::string::npos) && (message.length() >= 100)) {
+      std::cout << "stoll packet_number: " << message.substr(0, pos) << std::endl;
+      long long packet_number = std::stol(message.substr(0, pos));
+      //JS: Use long long for high precision
+      std::cout << "stoll largest_response_timestamp: " << message.substr(pos+1) << std::endl;
+      long long latest_response_timestamp = std::stol(message.substr(pos+1));
+
+      //JS: Get one way delay from client to server (in microseconds)
+      long long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      long long delay = current_timestamp - latest_response_timestamp;
+      std::cout << "ONE WAY DELAY " << packet_number << ": " << delay << std::endl;
+
+      //JS: Write delays to output file, for future analysis
+      std::ofstream logging_delay_client;
+      logging_delay_client.open("/home/lca2/Desktop/delay_client_server.txt", std::ios_base::app);
+      logging_delay_client << packet_number << ": " << delay << std::endl;
+      logging_delay_client.close();
+    } else {
+       std::cout << "Ignored incomplete request: " << message << std::endl;
+    }
 }
 
 }  // namespace net

@@ -80,6 +80,8 @@ class QuicSimpleServerSession : public QuicServerSessionBase {
       QuicStreamId original_stream_id,
       const SpdyHeaderBlock& original_request_headers);
 
+  void OnEphemeralMessageReceived(const std::string &message) override;
+
  protected:
   // QuicSession methods:
   // TODO(ckrasic) - remove these two when

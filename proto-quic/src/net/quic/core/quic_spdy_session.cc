@@ -819,4 +819,8 @@ QuicSpdyStream* QuicSpdySession::MaybeCreateOutgoingDynamicStream(
   return stream;
 }
 
+void QuicSpdySession::OnEphemeralMessageReceived(const std::string &message) {
+  // This function is expected to be overriden by a subclass
+}
+
 }  // namespace net

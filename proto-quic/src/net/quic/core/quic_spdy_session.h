@@ -132,6 +132,8 @@ class QUIC_EXPORT_PRIVATE QuicSpdySession : public QuicSession {
                                  size_t len,
                                  bool fin);
 
+  virtual void OnEphemeralMessageReceived(const std::string &message);
+
   bool force_hol_blocking() const { return force_hol_blocking_; }
 
   bool server_push_enabled() const { return server_push_enabled_; }
