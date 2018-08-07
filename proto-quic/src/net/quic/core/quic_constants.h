@@ -67,7 +67,7 @@ const uint32_t kMinInitialRoundTripTimeUs = 10 * kNumMicrosPerMilli;
 const uint32_t kMaxInitialRoundTripTimeUs = 15 * kNumMicrosPerSecond;
 
 // Maximum number of open streams per connection.
-const size_t kDefaultMaxStreamsPerConnection = 100;
+const size_t kDefaultMaxStreamsPerConnection = 100000;
 
 // Number of bytes reserved for public flags in the packet header.
 const size_t kPublicFlagsSize = 1;
@@ -152,7 +152,8 @@ const int kMaxPromisedStreamsMultiplier = kMaxAvailableStreamsMultiplier - 1;
 // TCP RFC calls for 1 second RTO however Linux differs from this default and
 // define the minimum RTO to 200ms, we will use the same until we have data to
 // support a higher or lower value.
-static const int64_t kMinRetransmissionTimeMs = 200;
+// Ephemeral QUIC changes the default minimum RTO to 0.
+static const int64_t kMinRetransmissionTimeMs = 0; //200;
 
 // We define an unsigned 16-bit floating point value, inspired by IEEE floats
 // (http://en.wikipedia.org/wiki/Half_precision_floating-point_format),

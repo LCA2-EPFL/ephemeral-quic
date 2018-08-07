@@ -76,6 +76,14 @@ void QuicSimpleServerStream::OnDataAvailable() {
     QUIC_DVLOG(1) << "Stream " << id() << " processed " << iov.iov_len
                   << " bytes.";
     body_.append(static_cast<char*>(iov.iov_base), iov.iov_len);
+    MarkConsumed(iov.iov_len);
+  }
+  if (!sequencer()->IsClosed()) {
+    sequencer()->SetUnblocked();
+    return;
+  }
+  
+  std::string message = body_;
 
     // JS
     if (id() < LargestStreamId){
@@ -89,15 +97,42 @@ void QuicSimpleServerStream::OnDataAvailable() {
       //JS: update the value of LargestStreamId, because we encountered a stream id that
       //JS: is larger than the largest one seen so far
       LargestStreamId = id();
-      std::string message(static_cast<char *>(iov.iov_base));
-      spdy_session()->OnEphemeralMessageReceived(message);
+//      std::string message(static_cast<char *>(iov.iov_base));
+      // spdy_session()->OnEphemeralMessageReceived(message);
     }
-    MarkConsumed(iov.iov_len);
-  }
-  if (!sequencer()->IsClosed()) {
-    sequencer()->SetUnblocked();
-    return;
-  }
+
+    //JS: split the message string into packet_number and timestamp
+    std::string::size_type pos = message.find(":");
+    // A complete client request has more than 100 characters, including "packet_number:timestamp:" and padding characters.
+    if ((pos != std::string::npos) && (message.find(":", pos+1) != std::string::npos) && (message.length() >= 100)) {
+      std::cout << "stoll packet_number: " << message.substr(0, pos) << std::endl;
+      long long packet_number = std::stol(message.substr(0, pos));
+      //JS: Use long long for high precision
+      std::cout << "stoll sending_timestamp: " << message.substr(pos+1) << std::endl;
+      long long sending_timestamp = std::stol(message.substr(pos+1));
+
+      //JS: Get one way delay from client to server (in microseconds)
+      long long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+      long long delay = current_timestamp - sending_timestamp;
+      std::cout << "ONE WAY DELAY " << packet_number << ": " << delay << std::endl;
+
+      //JS: Write delays to output file, for future analysis
+      std::ofstream logging_delay_client;
+      logging_delay_client.open("/home/lca2/Desktop/delay_client_server.txt", std::ios_base::app);
+      logging_delay_client << packet_number << ": " << delay << std::endl;
+      logging_delay_client.close();
+
+
+  SpdyHeaderBlock dummy_headers;
+  dummy_headers[":status"] = "404";
+//  long long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  std::string body = std::to_string(sending_timestamp) + ":" + std::to_string(current_timestamp); 
+  SendHeadersAndBody(std::move(dummy_headers), body);
+
+    } else {
+       std::cout << "Ignored incomplete request: " << message << std::endl;
+    }
+
 
   // If the sequencer is closed, then all the body, including the fin, has been
   // consumed.
@@ -107,7 +142,9 @@ void QuicSimpleServerStream::OnDataAvailable() {
     return;
   }
 
-  SendResponse();
+
+
+//  SendResponse();
 }
 
 void QuicSimpleServerStream::PushResponse(
@@ -131,115 +168,6 @@ void QuicSimpleServerStream::SendResponse() {
   SpdyHeaderBlock headers;
   headers[":status"] = "404";
   SendHeadersAndBody(std::move(headers), std::to_string(current_timestamp));
-
-  return;
-
-  if (request_headers_.empty()) {
-    std::cout << "Request headers empty" << std::endl;
-    QUIC_DVLOG(1) << "Request headers empty.";
-    SendErrorResponse();
-    return;
-  }
-
-  if (content_length_ > 0 &&
-      static_cast<uint64_t>(content_length_) != body_.size()) {
-    std::cout << "Different sizes" << std::endl;
-    QUIC_DVLOG(1) << "Content length (" << content_length_ << ") != body size ("
-                  << body_.size() << ").";
-    SendErrorResponse();
-    return;
-  }
-
-  if (!QuicContainsKey(request_headers_, ":authority") ||
-      !QuicContainsKey(request_headers_, ":path")) {
-    std::cout << "Request headers lack keys" << std::endl;
-    QUIC_DVLOG(1) << "Request headers do not contain :authority or :path.";
-    SendErrorResponse();
-    return;
-  }
-
-  // Find response in cache. If not found, send error response.
-
-  //JS
-  QuicHttpResponseCache::Response* response = nullptr;
-  auto authority = request_headers_.find(":authority");
-  auto path = request_headers_.find(":path");
-  if (authority != request_headers_.end() && path != request_headers_.end()) {
-    response = response_cache_->GetResponse(authority->second, path->second);
-
-    //JS: Modify the response, fetched from the cache, on the fly
-    long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
-
-    response->set_body(QuicStringPiece(std::to_string(current_timestamp)));
-    std::cout << "RESPONSE: " << current_timestamp << std::endl;
-
-  }
-  if (response == nullptr) {
-    QUIC_DVLOG(1) << "Response not found in cache.";
-    SendNotFoundResponse();
-    return;
-  }
-
-  if (response->response_type() == QuicHttpResponseCache::CLOSE_CONNECTION) {
-    QUIC_DVLOG(1) << "Special response: closing connection.";
-    CloseConnectionWithDetails(QUIC_NO_ERROR, "Toy server forcing close");
-    return;
-  }
-
-  if (response->response_type() == QuicHttpResponseCache::IGNORE_REQUEST) {
-    QUIC_DVLOG(1) << "Special response: ignoring request.";
-    return;
-  }
-
-  // Examing response status, if it was not pure integer as typical h2
-  // response status, send error response. Notice that
-  // QuicHttpResponseCache push urls are strictly authority + path only,
-  // scheme is not included (see |QuicHttpResponseCache::GetKey()|).
-  string request_url = request_headers_[":authority"].as_string() +
-                       request_headers_[":path"].as_string();
-  int response_code;
-  const SpdyHeaderBlock& response_headers = response->headers();
-  if (!ParseHeaderStatusCode(response_headers, &response_code)) {
-    auto status = response_headers.find(":status");
-    if (status == response_headers.end()) {
-      QUIC_LOG(WARNING)
-          << ":status not present in response from cache for request "
-          << request_url;
-    } else {
-      QUIC_LOG(WARNING) << "Illegal (non-integer) response :status from cache: "
-                        << status->second << " for request " << request_url;
-    }
-    SendErrorResponse();
-    return;
-  }
-
-  if (id() % 2 == 0) {
-    // A server initiated stream is only used for a server push response,
-    // and only 200 and 30X response codes are supported for server push.
-    // This behavior mirrors the HTTP/2 implementation.
-    bool is_redirection = response_code / 100 == 3;
-    if (response_code != 200 && !is_redirection) {
-      QUIC_LOG(WARNING) << "Response to server push request " << request_url
-                        << " result in response code " << response_code;
-      Reset(QUIC_STREAM_CANCELLED);
-      return;
-    }
-  }
-  std::list<QuicHttpResponseCache::ServerPushInfo> resources =
-      response_cache_->GetServerPushResources(request_url);
-  QUIC_DVLOG(1) << "Stream " << id() << " found " << resources.size()
-                << " push resources.";
-
-  if (!resources.empty()) {
-    QuicSimpleServerSession* session =
-        static_cast<QuicSimpleServerSession*>(spdy_session());
-    session->PromisePushResources(request_url, resources, id(),
-                                  request_headers_);
-  }
-
-  QUIC_DVLOG(1) << "Stream " << id() << " sending response.";
-  SendHeadersAndBodyAndTrailers(response->headers().Clone(), response->body(),
-                                response->trailers().Clone());
 }
 
 void QuicSimpleServerStream::SendNotFoundResponse() {

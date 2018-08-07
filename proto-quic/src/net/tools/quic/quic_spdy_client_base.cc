@@ -100,8 +100,10 @@ void QuicSpdyClientBase::OnClose(QuicSpdyStream* stream) {
 
     //JS
     if (latest_response_body_ != ""){
+      long long sending_timestamp = std::stoll(latest_response_body_);
+      std::string::size_type pos = latest_response_body_.find(':');
       //JS: Use long for higher precision
-      long latest_response_timestamp = std::stol(latest_response_body_);
+      long latest_response_timestamp = std::stol(latest_response_body_.substr(pos + 1));
 
       //JS: Get one way delay from server to client (in microseconds)
       long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
@@ -116,13 +118,22 @@ void QuicSpdyClientBase::OnClose(QuicSpdyStream* stream) {
       //JS: Write delays to output file, for future analysis
       std::ofstream logging_delay_server;
       logging_delay_server.open("/home/lca2/Desktop/delay_server_client.txt", std::ios_base::app);
-      logging_delay_server << std::to_string(packet_number) + ": " + std::to_string(delay)<< std::endl;
+      logging_delay_server << packet_number << ": " << delay << std::endl;
       logging_delay_server.close();
+
+      std::cout << "Request sent: " << sending_timestamp << "   Response sent: " << latest_response_timestamp << "   Response received: " << current_timestamp << std::endl;
+      std::cout << "RTT: " << current_timestamp - sending_timestamp;
+      if (current_timestamp - sending_timestamp > 100000) {
+        std::cout << "     !!!!!!!!!!!!";
+      }
+      std::cout << std::endl;
+      std::cout << "client->server: " << latest_response_timestamp - sending_timestamp << std::endl;
+      std::cout << "server->client: " << current_timestamp - latest_response_timestamp << std::endl;
+
 
     if (latest_response_timestamp > highest_timestamp){
       highest_timestamp = latest_response_timestamp;
-    }
-    else if (latest_response_timestamp < highest_timestamp){
+    } else if (latest_response_timestamp < highest_timestamp){
       latest_response_body_ = std::to_string(highest_timestamp);
       std::cout << "Choose previous response!" << std::endl;
       std::cout << std::to_string(stream->id()) + " OLD: " << latest_response_timestamp << std::endl;
@@ -146,7 +157,10 @@ std::unique_ptr<QuicSession> QuicSpdyClientBase::CreateQuicClientSession(
                                                &push_promise_index_);
 }
 
-void QuicSpdyClientBase::SendEphemeralMessage(const std::string &message) {
+// deadline_in_microsecond is -1 by default, meaning deadline is not specified and used
+void QuicSpdyClientBase::SendEphemeralMessage(const std::string &message, int deadline_in_microsecond) {
+  long long start_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+  // Cancel the last latest stream if still open, to stop retransmitting old ephemeral messages
   if ((latest_ephemeral_stream_ != nullptr) && (!latest_ephemeral_stream_->IsClosed())) {
     std::cout << "Cancelling stream " << latest_ephemeral_stream_->id() << std::endl;
     client_session()->StopRetransmissions(latest_ephemeral_stream_->id());
@@ -154,6 +168,23 @@ void QuicSpdyClientBase::SendEphemeralMessage(const std::string &message) {
   }
   SpdyHeaderBlock dummy_header;
   SendRequest(dummy_header, message, /*fin=*/true);
+
+  if (deadline_in_microsecond < 0) {
+    return;
+  }
+  // If deadline specified, wait until the deadline and cancel current stream if still open
+  while(true){
+    WaitForEvents();
+    long long current_timestamp = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    if (current_timestamp - start_timestamp >= deadline_in_microsecond){
+      break;
+    }
+  }
+  if ((latest_ephemeral_stream_ != nullptr) && (!latest_ephemeral_stream_->IsClosed())) {
+    std::cout << "Cancelling stream " << latest_ephemeral_stream_->id() << std::endl;
+    client_session()->StopRetransmissions(latest_ephemeral_stream_->id());
+    latest_ephemeral_stream_->Reset(QUIC_STREAM_CANCELLED);
+  }
 }
 
 void QuicSpdyClientBase::SendRequest(const SpdyHeaderBlock& headers,

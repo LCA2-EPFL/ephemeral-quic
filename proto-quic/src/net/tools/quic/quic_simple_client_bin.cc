@@ -113,7 +113,7 @@ int32_t FLAGS_initial_mtu = 0;
 
 static const int kMessageLength = 100;
 static const char kPaddingCharacter = '*';
-static const int kNumberOfEphemeralMessages = 100;
+static const int kNumberOfEphemeralMessages = 36000;
 static const int kCycleInMicroseconds = 100000;
 
 class FakeProofVerifier : public ProofVerifier {
@@ -330,7 +330,15 @@ int main(int argc, char* argv[]) {
         break;
       }
     }
+    std::cout << "num_active_requests: " << client.session()->num_active_requests() << std::endl;
   }
+
+  // Ephemeral QUIC won't have events to wait at this point 
+  // Baseline QUIC would wait until all the data being received.
+  while (client.WaitForEvents()) {
+  }
+
+  std::cout << "num_active_requests: " << client.session()->num_active_requests() << std::endl;
 
   size_t response_code = client.latest_response_code();
   if (response_code >= 200 && response_code < 300) {

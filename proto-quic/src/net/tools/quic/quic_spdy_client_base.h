@@ -101,7 +101,7 @@ class QuicSpdyClientBase : public QuicClientBase,
 
   // Stops retransmistting obsolete ephemeral messages, sends the new ephemeral
   // message, and does not wait for response before returning.
-  void SendEphemeralMessage(const std::string &message);
+  void SendEphemeralMessage(const std::string &message, int deadline_in_microsecond = -1);
 
   // Returns a newly created QuicSpdyClientStream.
   QuicSpdyClientStream* CreateClientStream();
