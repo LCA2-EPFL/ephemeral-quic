@@ -1,55 +1,50 @@
-proto-quic is no longer being maintained
-========================================
+# Ephemeral QUIC
 
-proto-quic is no longer being updated from Chromium. To checkout and build QUIC
-code, please follow the [Chromium instructions](https://www.chromium.org/quic/playing-with-quic).
+An extension to QUIC optimized for ephemeral data
 
-This repository will remain available for some period of time, but will
-eventually be removed.
+## Directory structure
 
-proto-quic
-==========
+**src/**:   source code of Ephemeral QUIC
+**experiments/**:  evaluation scripts and results
+**thesis/**: thesis in LaTeX
 
-proto-quic is intended as a standalone library for [QUIC](https://www.chromium.org/quic).
+## Build instructions
 
-It contains the subset of Chromium code and dependencies required for QUIC so
-folks can use the Chromium code without depending on all of Chromium.  It is
-intended to be a cross-platform library, but will only support the set (or a
-strict subset) of platforms which Chromium already supports.
+This directory contains the files we used in the project Ephemeral QUIC.
 
-This is *not* an officially supported Google product.  It's being kept up to
-date (on a theoretical weekly basis) as a best-effort side-project by some of
-the current QUIC developers. Worst case, should Google's priorities change about
-supporting a standalone QUIC library, it's all open source and any interested
-community can just clone the repo and continue updates on their own.
+You may find in /home/lca2/Desktop/rolle-network/proto-quic/src/out/Default binaries compiled:
+* baseline_quic_client
+* baseline_quic_server
+* ephemeral_quic_client
+* ephemeral_quic_server
+* quic_client: corresponds to ephemeral_quic_client
+* quic_server: corresponds to ephemeral_quic_server
 
-Currently, the only supported platform is Linux (and the only tested version is
-Google's Ubuntu clone) but Windows and iOS should be coming soon.
+To compile from code, run 
+```
+$ cd home/lca2/Desktop/rolle-network/proto-quic/src/
+$ ninja -C out/Default quic_client quic_server
+```
+then you will find the compile binaries quic_client and quic_server also in the directory /home/lca2/Desktop/rolle-network/proto-quic/src/out/Default. 
 
-Building on Linux
------------------
+## Run experiments
 
-0. Clone this repository:
-   ```
-   git clone https://github.com/google/proto-quic.git
-   cd proto-quic
-   export PROTO_QUIC_ROOT=`pwd`/src
-   export PATH=$PATH:`pwd`/depot_tools
-   ./proto_quic_tools/sync.sh
-   ```
+To run and collect results of
+ 1) single flow experiments of Ephemeral QUIC, Baseline QUIC, UDP, TCP
+ 2) experiments with TCP competing flow
 
-1. If you're building for the first time, install dependencies:
-   ```
-   ./src/build/install-build-deps.sh
-   ```
+Run the following script with root permissions:
+```
+# cd /home/lca2/Desktop/rolle-network/proto-quic/experiments/
+# sudo ./run-experiments.sh
+```
 
-2. Build the QUIC client, server, and tests:
-   ```
-   cd src
-   gn gen out/Default && ninja -C out/Default quic_client quic_server net_unittests
-   ```
+To plot the figure comparing the CDF of delays of valid messages of TCP, UDP, Baseline QUIC, Ephemeral QUIC, use the script plot_tcp_udp_baseline_ephemeral.py. For example, 
+```
+ python3 plot_tcp_udp_baseline_ephemeral.py aggregated/base-tcp-delay.txt aggregated/base-udp-delay.txt aggregated/base-baseline-delay.txt aggregated/base-ephemeral-delay.txt
+ ```
 
-From then on you can follow the usual Chromium instructions for playing with the
-toy client and server:
-
-https://www.chromium.org/quic/playing-with-quic
+ where the *-delay.txt files are aggregated from the multiple runs of an experiment.
+ 
+ 
+ 
