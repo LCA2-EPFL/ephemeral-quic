@@ -12,7 +12,6 @@ mv qlen*.txt $dirname
 mv /home/lca2/Desktop/delay_client_server.txt $dirname
 mv /home/lca2/Desktop/delay_server_client.txt $dirname
 mv /home/lca2/Desktop/Old_Messages.txt $dirname
-cp network-quic.py $dirname
 ./num_open_streams < $dirname/output-client.txt > $dirname/num_open_streams.txt
 python3 plot_num_open_streams_nonshow.py $dirname/num_open_streams.txt 
 ./preprocess_message_receipt  $dirname/delay_client_server.txt < $dirname/output-server.txt > $dirname/ephemeral_message_receipt.txt

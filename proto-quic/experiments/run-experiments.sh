@@ -142,20 +142,20 @@ pkill xterm; mn --clean; ./nonshow_save_result.sh baseline-rtt5-buffer100-bw0.1-
 ################################### UDP ###############################################
 
 # base
-mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer100-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh
+mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer100-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh udp-rtt5-buffer100-bw1-loss10
 
 # buffer
-mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer10-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh
+mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer10-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh udp-rtt5-buffer10-bw1-loss10
 
 # loss
-mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer100-bw1-loss1.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh
+mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer100-bw1-loss1.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh udp-rtt5-buffer100-bw1-loss1
 
 # RTT
-mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt10-buffer100-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh
-mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt20-buffer100-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh
+mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt10-buffer100-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh udp-rtt10-buffer100-bw1-loss10
+mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt20-buffer100-bw1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh udp-rtt20-buffer100-bw1-loss10
 
 # bw
-mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer100-bw0.1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh
+mn --clean; ./clean.sh; timeout 4000 python network-udp-rtt5-buffer100-bw0.1-loss10.py; pkill xterm; mn --clean; ./nonshow_udp_save_result.sh udp-rtt5-buffer100-bw0.1-loss10
 
 
 ##################################### TCP #############################################
@@ -229,7 +229,7 @@ pid=$(pgrep quic_client)
 echo $pid
 tail --pid=$pid -f /dev/null
 sleep 30
-pkill xterm; mn --clean; ./nonshow_save_result_competing_flows.sh competing-ephemeral-rtt5-buffer100-bw0.1-loss1.py
+pkill xterm; mn --clean; ./nonshow_save_result_competing_flows.sh competing-tcp-ephemeral-rtt5-buffer100-bw0.1-loss1
 
 # with Baseline QUIC
 mn --clean; ./clean.sh
@@ -239,4 +239,4 @@ pid=$(ps -ef | grep baseline_quic_client  | grep -v xterm | grep -v grep | awk '
 echo $pid
 tail --pid=$pid -f /dev/null
 sleep 30
-pkill xterm; mn --clean; ./nonshow_save_result_competing_flows.sh competing-baseline-rtt5-buffer100-bw0.1-loss1
+pkill xterm; mn --clean; ./nonshow_save_result_competing_flows.sh competing-tcp-baseline-rtt5-buffer100-bw0.1-loss1

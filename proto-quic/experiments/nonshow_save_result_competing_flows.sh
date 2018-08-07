@@ -25,8 +25,10 @@ cp /home/lca2/Desktop/rolle-network/proto-quic/src/net/tools/quic/quic_simple_cl
 mv queue.txt $dirname
 python3 plot_packets_sent_and_dropped_nonshow.py $dirname/queue.txt 
 mv statistics.txt $dirname
-mv *.png $dirname/
 mv tcp-output*.txt $dirname/
+./extract-competing-tcp-throughput < $dirname/tcp-output-client.txt > $dirname/throughput.txt
+python3 plot_throughput.py $dirname/throughput.txt
+mv *.png $dirname/
 
 
 

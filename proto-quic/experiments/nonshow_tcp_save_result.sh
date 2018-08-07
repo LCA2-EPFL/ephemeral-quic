@@ -1,4 +1,8 @@
-dirname=$(date +%Y%m%d-%H%M)-tcp
+dirname=$(date +%Y%m%d-%H%M)
+if [ $# -eq 1 ]
+then
+  dirname=$dirname-$1
+fi
 mkdir $dirname
 mv client.pcap $dirname
 mv server.pcap $dirname
@@ -12,6 +16,4 @@ python3 plot_packets_sent_and_dropped_nonshow.py $dirname/queue.txt
 cp tcp_client.py $dirname/
 cp tcp_server.py $dirname/
 mv *.png $dirname/
-
-
 

@@ -13,20 +13,11 @@ int main() {
   long long total_delay = 0;
   int count_all = 0;
   vector<double> delays;
-  int delay2;
   string s;
   while (cin >> delay) {
     delays.push_back(delay);
     count_all++;
   }
-  /*
-  while (cin >> delay) {
-    total_delay += delay;
-    cin >> delay2;
-    cout << delay2 << endl;
-  }*/
-
-
   double mean_delay = (double)total_delay / count_all;
   sort(delays.begin(), delays.end());
   // cout << "Mean delay: " << mean_delay <<  endl;
