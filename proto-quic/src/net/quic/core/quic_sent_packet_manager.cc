@@ -5,6 +5,7 @@
 #include "net/quic/core/quic_sent_packet_manager.h"
 
 #include <algorithm>
+#include <iostream>
 #include <string>
 
 #include "net/quic/chromium/quic_utils_chromium.h"
@@ -369,6 +370,7 @@ void QuicSentPacketManager::NeuterUnencryptedPackets() {
 void QuicSentPacketManager::MarkForRetransmission(
     QuicPacketNumber packet_number,
     TransmissionType transmission_type) {
+  std::cout << "MarkForRetransmission " << packet_number << std::endl;
   const QuicTransmissionInfo& transmission_info =
       unacked_packets_.GetTransmissionInfo(packet_number);
   QUIC_BUG_IF(transmission_info.retransmittable_frames.empty());
@@ -779,6 +781,7 @@ const QuicTime QuicSentPacketManager::GetRetransmissionTime() const {
       // Wait for TLP packets to be acked before an RTO fires.
       QuicTime tlp_time =
           unacked_packets_.GetLastPacketSentTime() + GetTailLossProbeDelay();
+      std::cout << "rto: " << rto_time - sent_time << " tlp: " << tlp_time - sent_time << "  result: " << std::max(rto_time - sent_time, tlp_time - sent_time) << std::endl;
       return std::max(tlp_time, rto_time);
     }
   }
@@ -844,6 +847,7 @@ const QuicTime::Delta QuicSentPacketManager::GetRetransmissionDelay() const {
   retransmission_delay =
       retransmission_delay *
       (1 << std::min<size_t>(consecutive_rto_count_, kMaxRetransmissions));
+  std::cout << "retransmission_delay: " << retransmission_delay << std::endl;
 
   if (retransmission_delay.ToMilliseconds() > kMaxRetransmissionTimeMs) {
     return QuicTime::Delta::FromMilliseconds(kMaxRetransmissionTimeMs);
@@ -906,6 +910,7 @@ void QuicSentPacketManager::CancelRetransmissionsForStream(
 
 void QuicSentPacketManager::SetSendAlgorithm(
     CongestionControlType congestion_control_type) {
+  std::cout << "QuicSentPacketManager::SetSendAlgorithm: " << congestion_control_type << std::endl;
   SetSendAlgorithm(SendAlgorithmInterface::Create(
       clock_, &rtt_stats_, &unacked_packets_, congestion_control_type,
       QuicRandom::GetInstance(), stats_, initial_congestion_window_));

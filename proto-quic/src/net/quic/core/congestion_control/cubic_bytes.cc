@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <iostream>
 
 #include "net/quic/core/quic_packets.h"
 #include "net/quic/platform/api/quic_flags.h"
@@ -45,6 +46,7 @@ CubicBytes::CubicBytes(const QuicClock* clock)
       fix_cubic_quantization_(false),
       fix_beta_last_max_(false),
       allow_per_ack_updates_(false) {
+  std::cout << "CubicBytes constructor called" << std::endl;
   ResetCubicState();
 }
 
@@ -136,6 +138,9 @@ QuicByteCount CubicBytes::CongestionWindowAfterPacketLoss(
     last_max_congestion_window_ = current_congestion_window;
   }
   epoch_ = QuicTime::Zero();  // Reset time.
+  std::cout << "CongestionWindowAfterPacketLoss: " << current_congestion_window * Beta()
+    <<   "   current_congestion_window: " << current_congestion_window
+    << "   Beta(): " << Beta() << std::endl;
   return static_cast<int>(current_congestion_window * Beta());
 }
 
@@ -231,6 +236,7 @@ QuicByteCount CubicBytes::CongestionWindowAfterAck(
 
   QUIC_DVLOG(1) << "Final target congestion_window: "
                 << target_congestion_window;
+  std::cout << "CongestionWindowAfterAck: " << target_congestion_window << std::endl;
   return target_congestion_window;
 }
 

@@ -5,6 +5,7 @@
 #include "net/quic/core/quic_packet_generator.h"
 
 #include <cstdint>
+#include <iostream>
 
 #include "net/quic/core/crypto/quic_random.h"
 #include "net/quic/core/quic_utils.h"
@@ -295,6 +296,15 @@ bool QuicPacketGenerator::AddNextPendingFrame() {
     // Packet was full.
     return false;
   }
+  std::cout << "AddNextPendingFrame" << queued_control_frames_.back().type << std::endl;
+  switch (queued_control_frames_.back().type) {
+     case RST_STREAM_FRAME:
+        std::cout << "RST_STREAM_FRAME" << queued_control_frames_.back().rst_stream_frame->stream_id << "  " << queued_control_frames_.back().rst_stream_frame->byte_offset << std::endl;
+     break;
+    default:
+      std::cout << "Stream type: " << queued_control_frames_.back().type << std::endl;
+  }
+
   queued_control_frames_.pop_back();
   return true;
 }
